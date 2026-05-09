@@ -1,6 +1,6 @@
 "use client";
-
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 interface User {
   id: number;
@@ -13,6 +13,7 @@ export default function UsersTable({ initialUsers }: { initialUsers: User[] }) {
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const router = useRouter();
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -70,7 +71,11 @@ export default function UsersTable({ initialUsers }: { initialUsers: User[] }) {
             <tbody className="divide-y divide-zinc-100">
               {filteredUsers.length > 0 ? (
                 filteredUsers.map((user) => (
-                  <tr key={user.id} className="transition-colors hover:bg-[#F0F0F0]/50">
+                  <tr
+                    key={user.id} 
+                    onClick={() => router.push(`/users/${user.id}`)}
+                    className="cursor-pointer transition-colors hover:bg-[#F0F0F0]/50"
+                  >
                     <td className="whitespace-nowrap px-6 py-4 font-medium text-zinc-900">
                       {user.name}
                     </td>
