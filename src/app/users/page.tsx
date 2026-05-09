@@ -10,18 +10,14 @@ export default async function UsersPage() {
   const users = await userService.getAllUsers();
 
   return (
-    <div className="min-h-screen bg-[#F0F0F0] p-8 font-sans">
-      <div className="mx-auto max-w-5xl">
+    <div className="min-h-screen bg-[#F0F0F0] p-4 md:p-8 font-sans">
+      <div className="mx-auto max-w-6xl">
         <header className="mb-8 border-l-4 border-[#E7473C] pl-4">
-          <h1 className="text-3xl font-bold text-zinc-900">
-            Users
-          </h1>
-          <p className="text-zinc-600">
-            Ini adalah halaman data user
-          </p>
+          <h1 className="text-3xl font-bold text-zinc-900">User Operations</h1>
+          <p className="text-zinc-600 font-medium">Activity signals from {users.length} team members.</p>
         </header>
 
-        <Suspense fallback={<div className="text-[#E7473C] font-medium">Memuat data...</div>}>
+        <Suspense fallback={<p>Loading workspace...</p>}>
           <UsersTable initialUsers={users} />
         </Suspense>
       </div>

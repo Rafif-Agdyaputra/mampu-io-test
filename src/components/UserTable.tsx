@@ -1,24 +1,19 @@
 "use client";
 import { useState, useMemo, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  website: string;
-}
-
-export default function UsersTable({ initialUsers }: { initialUsers: User[] }) {
-  const [query, setQuery] = useState("");
-  const [search, setSearch] = useState("");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+export default function UsersTable({ initialUsers }: { initialUsers: any[] }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  const [query, setQuery] = useState(searchParams.get("q") || "");
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
+  const [filterType, setFilterType] = useState(searchParams.get("filter") || "all");
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      setSearch(query);
-    }, 200);
+      setDebouncedQuery(query);
+    }, 300);
 
     return () => {
       clearTimeout(handler);
@@ -27,81 +22,108 @@ export default function UsersTable({ initialUsers }: { initialUsers: User[] }) {
 
   const filteredUsers = useMemo(() => {
     return initialUsers
-      .filter(
-        (user) =>
-          user.name.toLowerCase().includes(search.toLowerCase()) ||
-          user.email.toLowerCase().includes(search.toLowerCase())
-      )
-      .sort((a, b) => {
-        return sortOrder === "asc"
-          ? a.name.localeCompare(b.name)
-          : b.name.localeCompare(a.name);
-      });
-  }, [search, sortOrder, initialUsers]);
+      .filter(user => {
+        const matchesSearch = user.name.toLowerCase().includes(debouncedQuery.toLowerCase()) || 
+                             user.email.toLowerCase().includes(debouncedQuery.toLowerCase());
+        
+        if (filterType === "pending") return matchesSearch && user.activity.pendingTodos > 10;
+        if (filterType === "no-todo") return matchesSearch && user.activity.completedTodos === 0;
+        return matchesSearch;
+      })
+      .sort((a, b) => b.activity.pendingTodos - a.activity.pendingTodos);
+  }, [debouncedQuery, filterType, initialUsers]);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <input
-          type="text"
-          placeholder="Search by name or email..."
-          className="w-full max-w-sm rounded-md border border-zinc-300 bg-white p-3 text-sm text-zinc-900 outline-none transition-all placeholder:text-zinc-500 focus:border-[#E7473C] focus:ring-1 focus:ring-[#E7473C]"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-        
-        <button
-          onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-          className="w-fit rounded-md bg-[#E7473C] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 active:scale-95"
-        >
-          Sort by Name {sortOrder === "asc" ? "ASC" : "DESC"}
-        </button>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end bg-white p-4 rounded-xl shadow-sm border border-zinc-200">
+        <div className="flex-1 space-y-1">
+          <label className="text-xs font-bold text-zinc-400 uppercase">Search</label>
+          <input
+            type="text"
+            className="w-full bg-[#F0F0F0] p-2.5 rounded-md text-sm text-zinc-900 outline-none placeholder:text-zinc-500 focus:ring-1 focus:ring-[#E7473C]"
+            placeholder="Name or email..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-zinc-400 uppercase">Quick Filter</label>
+          <select 
+            className="w-full bg-[#F0F0F0] p-2.5 rounded-md text-sm text-zinc-900 outline-none"
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+          >
+            <option value="all">All Users</option>
+            <option value="pending">High Pending</option>
+            <option value="no-todo">No Completed Tasks</option>
+          </select>
+        </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-50 border-b border-zinc-100 text-xs uppercase tracking-wider text-zinc-500">
-              <tr>
-                <th className="px-6 py-4 font-bold">Name</th>
-                <th className="px-6 py-4 font-bold">Email</th>
-                <th className="px-6 py-4 font-bold">Website</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-100">
-              {filteredUsers.length > 0 ? (
-                filteredUsers.map((user) => (
-                  <tr
-                    key={user.id} 
-                    onClick={() => router.push(`/users/${user.id}`)}
-                    className="cursor-pointer transition-colors hover:bg-[#F0F0F0]/50"
-                  >
-                    <td className="whitespace-nowrap px-6 py-4 font-medium text-zinc-900">
-                      {user.name}
-                    </td>
-                    <td className="px-6 py-4 text-zinc-600">{user.email}</td>
-                    <td className="px-6 py-4">
-                      <a 
-                        href={`https://${user.website}`} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="font-medium text-[#E7473C] hover:underline"
-                      >
-                        {user.website}
-                      </a>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={3} className="px-6 py-12 text-center text-zinc-400">
-                    No matching users found.
+      <div className="hidden md:block overflow-hidden rounded-xl border border-zinc-200 bg-white">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-zinc-50 border-b text-zinc-500 font-bold uppercase text-[10px]">
+            <tr>
+              <th className="px-6 py-4">User</th>
+              <th className="px-6 py-4">Activity Signals</th>
+              <th className="px-6 py-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-zinc-100">
+            {filteredUsers.length > 0 ? (
+              filteredUsers.map(user => (
+                <tr key={user.id} className="hover:bg-[#F0F0F0]/50 transition-colors">
+                  <td className="px-6 py-4">
+                    <p className="font-bold text-zinc-900">{user.name}</p>
+                    <p className="text-xs text-zinc-500">{user.email}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-3 text-[11px] font-bold">
+                      <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded-full">{user.activity.totalPosts} Posts</span>
+                      <span className="bg-green-50 text-green-600 px-2 py-1 rounded-full">{user.activity.completedTodos} Done</span>
+                      <span className="bg-amber-50 text-amber-700 px-2 py-1 rounded-full">{user.activity.pendingTodos} Pending</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button 
+                      onClick={() => router.push(`/users/${user.id}?q=${query}&filter=${filterType}`)}
+                      className="text-[#E7473C] font-bold text-xs hover:underline"
+                    >
+                      View Details
+                    </button>
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={3} className="px-6 py-12 text-center text-zinc-400">No matching users found.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:hidden">
+        {filteredUsers.length > 0 ? (
+          filteredUsers.map(user => (
+            <div 
+              key={user.id} 
+              onClick={() => router.push(`/users/${user.id}?q=${query}&filter=${filterType}`)}
+              className="bg-white p-4 rounded-xl border border-zinc-200 active:bg-[#F0F0F0]"
+            >
+              <p className="font-bold text-zinc-900">{user.name}</p>
+              <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-bold">
+                <span className="border border-zinc-200 px-2 py-1 rounded italic">Posts: {user.activity.totalPosts}</span>
+                <span className="bg-green-600 text-white px-2 py-1 rounded">Done: {user.activity.completedTodos}</span>
+                <span className="bg-[#E7473C] text-white px-2 py-1 rounded">Pending: {user.activity.pendingTodos}</span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="bg-white p-8 rounded-xl border border-dashed border-zinc-300 text-center text-zinc-400">
+            No matching users found.
+          </div>
+        )}
       </div>
     </div>
   );
