@@ -54,7 +54,7 @@ export default function UsersTable({ initialUsers }: { initialUsers: User[] }) {
           onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
           className="w-fit rounded-md bg-[#E7473C] px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90 active:scale-95"
         >
-          Sort by Name {sortOrder === "asc" ? "↑" : "↓"}
+          Sort by Name {sortOrder === "asc" ? "ASC" : "DESC"}
         </button>
       </div>
 
